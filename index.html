@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aliens em Dinossauros no Espaço</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: #000;
+        }
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+        }
+        #startScreen {
+            position: absolute;
+            color: white;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Bananas: 0</div>
+    
+    <div id="startScreen">
+        <h1>Aliens em Dinossauros no Espaço</h1>
+        <p>Colete bananas com seu dinossauro alienígena!</p>
+        <button id="startButton">Começar Jogo</button>
+    </div>
+    
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        // Elementos do jogo
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const startScreen = document.getElementById('startScreen');
+        const startButton = document.getElementById('startButton');
+
+        // Variáveis do jogo
+        let score = 0;
+        let gameRunning = false;
+        let animationId;
+
+        // Jogador (Alien em Dinossauro)
+        const player = {
+            x: canvas.width / 2 - 25,
+            y: canvas.height - 60,
+            width: 50,
+            height: 50,
+            speed: 5,
+            color: '#4CAF50',
+            draw() {
+                // Corpo do dinossauro
+                ctx.fillStyle = '#8A2BE2';
+                ctx.fillRect(this.x + 10, this.y + 20, 30, 20);
+                
+                // Cabeça do dinossauro
+                ctx.fillRect(this.x + 5, this.y + 15, 10, 10);
+                
+                // Olho do alien
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x + 15, this.y + 10, 5, 5);
+            },
+            move(direction) {
+                if (direction === 'left' && this.x > 0) {
+                    this.x -= this.speed;
+                }
+                if (direction === 'right' && this.x < canvas.width - this.width) {
+                    this.x += this.speed;
+                }
+            }
+        };
+
+        // Bananas
+        let bananas = [];
+        class Banana {
+            constructor() {
+                this.x = Math.random() * (canvas.width - 20);
+                this.y = -20;
+                this.width = 20;
+                this.height = 20;
+                this.speed = 2 + Math.random() * 2;
+                this.color = '#FFD700';
+            }
+            
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x + 10, this.y + 10, 10, 0.5, 2.5);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#8B4513';
+                ctx.stroke();
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+            
+            update() {
+                this.y += this.speed;
+                return this.y > canvas.height;
+            }
+        }
+
+        // Estrelas de fundo
+        let stars = [];
+        class Star {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2;
+                this.speed = 1 + Math.random() * 2;
+            }
+            
+            draw() {
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(this.x, this.y, this.size, this.size);
+            }
+            
+            update() {
+                this.y += this.speed;
+                if (this.y > canvas.height) {
+                    this.y = 0;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+        }
+
+        // Inicializar estrelas
+        for (let i = 0; i < 100; i++) {
+            stars.push(new Star());
+        }
+
+        // Controles
+        const keys = {
+            left: false,
+            right: false
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') keys.left = true;
+            if (e.key === 'ArrowRight') keys.right = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft') keys.left = false;
+            if (e.key === 'ArrowRight') keys.right = false;
+        });
+
+        // Função principal do jogo
+        function gameLoop() {
+            // Limpar tela
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Atualizar e desenhar estrelas
+            stars.forEach(star => {
+                star.update();
+                star.draw();
+            });
+            
+            // Movimentar jogador
+            if (keys.left) player.move('left');
+            if (keys.right) player.move('right');
+            
+            // Desenhar jogador
+            player.draw();
+            
+            // Criar novas bananas aleatoriamente
+            if (Math.random() < 0.02) {
+                bananas.push(new Banana());
+            }
+            
+            // Atualizar e desenhar bananas
+            bananas = bananas.filter(banana => {
+                banana.draw();
+                return !banana.update();
+            });
+            
+            // Verificar colisões
+            bananas.forEach((banana, index) => {
+                if (
+                    player.x < banana.x + banana.width &&
+                    player.x + player.width > banana.x &&
+                    player.y < banana.y + banana.height &&
+                    player.y + player.height > banana.y
+                ) {
+                    bananas.splice(index, 1);
+                    score += 10;
+                    scoreElement.textContent = `Bananas: ${score}`;
+                }
+            });
+            
+            // Continuar o loop do jogo
+            if (gameRunning) {
+                animationId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Iniciar jogo
+        startButton.addEventListener('click', () => {
+            startScreen.style.display = 'none';
+            canvas.style.display = 'block';
+            gameRunning = true;
+            score = 0;
+            bananas = [];
+            scoreElement.textContent = `Bananas: ${score}`;
+            gameLoop();
+        });
+
+        // Esconder canvas inicialmente
+        canvas.style.display = 'none';
+    </script>
+</body>
+</html>
